@@ -2,49 +2,52 @@ import json
 import streamlit as st
 
 import gen
+from table_definitions import TABLES
 
+
+system_content = f"""
+You have access to the following ClickHouse SQL tables `v1__vehicle`, `v1__claim`, `v1__signal_event_occurrence` with the following definitions:
+[TABLES]
+{TABLES}
+[END TABLES]
+Your task is to generates the specs for a new issue based on the user's input. An issue's definition consists of `AT_RISK_VEHICLE_POPULATION`, `CLAIMS", `SIGNAL_EVENTS`, a `DESCRIPTION`.
+- `AT_RISK_VEHICLE_POPULATION` is defined by a set of SQL filter expressions on vehicle attributes in the `v1__vehicle` table.
+- `CLAIMS` is defined by a set of SQL filter expressions on claim attributes in the `v1__claim` table.
+- `SIGNAL_EVENTS` is defined either by a set of `signal_event_id`s or by a set of SQL filter expressions on signal event attributes in the `v1__signal_event_occurrence` table.
+- `DESCRIPTION` is a natural language description of the issue as a markdown string highlighting important keywords as bold..
+
+Given the user's input, generate the issue specs as a json string. Make sure to map the user's input to the correct table and column names. Ones you generate the results, double check you work to make sure columns referenced in the issue spec are present in the corresponding table and fix the results if neccessary.
+""".strip()
+
+print(system_content)
+
+examples = gen.Example(
+    "Colorado with LWN engine and 4025070 labor code and ac in causal parts",
+    response="""
+    {
+        "at_risk_population_filter": [
+            "vehicle_make = 'Chevrolet'",
+            "vehicle_model = 'Colorado'",
+            "engine_model = 'LWN'"
+        ],
+        "claim_filters": [
+            "labor_code = '4025070'",
+            "notes_causal_part LIKE '%ac%'"
+        ],
+        "signal_event_filters": [],
+        "description": "**Chevy Colorado** vehicles with **LWN** engine model that filled claims with **4025070** labor code."
+    }
+    """,
+).get()
+
+print(examples)
 
 @st.cache_data
 def get_res(issue_def):
     res = gen.get_chat_completion(
         issue_def,
-        system_content="""
-        You have access to the following ClickHouse SQL tables `v1__vehicle`, `v1__claim`, `v1__signal_event_occurrence` with the following definitions:
-        [TABLES]{table_definitions}[END TABLES]
-        Your task is to generates the specs for a new issue based on the user's input. An issue's definition consists of `AT_RISK_VEHICLE_POPULATION`, `CLAIMS", `SIGNAL_EVENTS`, a `DESCRIPTION`.
-        - `AT_RISK_VEHICLE_POPULATION` is defined by a set of filters on vehicle attributes in the `v1__vehicle` table.
-        - `CLAIMS` is defined by a set of filters on claim attributes in the `v1__claim` table.
-        - `SIGNAL_EVENTS` is defined either by a set of `signal_event_id`s or by a set of filters on signal event attributes in the `v1__signal_event_occurrence` table.
-        - `DESCRIPTION` is a natural language description of the issue.
-
-        Given the user's input, generate the issue specs as a json string as:
-        ```
-        {
-            "at_risk_population_filter": VEHICLE_FILTERS,
-            "claim_filters": CLAIM_FILTERS,
-            "signal_event_filters": SIGNAL_EVENT_FILTERS,
-            "description": DESCRIPTION,
-        }
-        ```
-        where `VEHICLE_FILTERS`, `CLAIM_FILTERS`, `SIGNAL_EVENT_FILTERS` are a list of SQL filter expressions. And DESCRIPTION is a markdown string highlighting important keywords as bold.
-        """,
-        examples=gen.Example(
-            "Colorado vins with LWN engine and claims with 4025070 labor code",
-            response="""
-            {
-                "at_risk_population_filter": [
-                    "vehicle_make = 'Chevrolet'",
-                    "vehicle_model = 'Colorado'",
-                    "engine_model = 'LWN'"
-                ],
-                "claim_filters": [
-                    "labor_code = '4025070'"
-                ],
-                "signal_event_filters": [],
-                "description": "**Chevy Colorado** vehicles with **LWN** engine model that filled claims with **4025070** labor code."
-            }
-            """,
-        ).get(),
+        system_content=system_content,
+        examples=examples,
     )
 
     return res

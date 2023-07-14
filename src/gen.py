@@ -7,7 +7,7 @@ import streamlit
 openai.organization = streamlit.secrets.openai_org
 openai.api_key = streamlit.secrets.openai_key
 
-def get_chat_completion(question, system_content="", model="gpt-3.5-turbo", examples=[], temperature=0):
+def get_chat_completion(question, system_content="", model="gpt-3.5-turbo", examples=[], temperature=.3):
     res = openai.ChatCompletion.create(
         model=model,
         messages=[
@@ -23,20 +23,6 @@ def get_chat_completion(question, system_content="", model="gpt-3.5-turbo", exam
 
     return res["choices"][0]["message"]["content"]
 
-
-response="""
-{
-    "at_risk_population_filter": [
-        "vehicle_model = 'Colorado'",
-        "engine_model = 'LWN'"
-    ],
-    "claim_filters": [
-        "labor_code = '4025070'"
-    ],
-    "signal_event_filters": [],
-    "description": "**Colorado** vins with **LWN** engine and claims with **4025070** labor code."
-}
-"""
 
 class IssueSpec(BaseModel):
     at_risk_population_filter: List[str] = []
