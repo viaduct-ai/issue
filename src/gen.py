@@ -2,9 +2,10 @@ import json
 from typing import List
 import openai
 from pydantic import BaseModel
+import streamlit
 
-openai.organization = "org-G6HKr8OR9yTNNOeoPa03n3Vg"
-openai.api_key = "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" 
+openai.organization = streamlit.secrets.openai_org
+openai.api_key = streamlit.secrets.openai_key
 
 def get_chat_completion(question, system_content="", model="gpt-3.5-turbo", examples=[], temperature=0):
     res = openai.ChatCompletion.create(
