@@ -1,0 +1,73 @@
+import json
+from typing import List
+import openai
+from pydantic import BaseModel
+
+openai.organization = "org-G6HKr8OR9yTNNOeoPa03n3Vg"
+openai.api_key = "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" 
+
+def get_chat_completion(question, system_content="", model="gpt-3.5-turbo", examples=[], temperature=0):
+    res = openai.ChatCompletion.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": system_content},
+            *examples,
+            {"role": "user", "content": question},
+        ],
+        temperature=temperature,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0,
+    )
+
+    return res["choices"][0]["message"]["content"]
+
+
+response="""
+{
+    "at_risk_population_filter": [
+        "vehicle_model = 'Colorado'",
+        "engine_model = 'LWN'"
+    ],
+    "claim_filters": [
+        "labor_code = '4025070'"
+    ],
+    "signal_event_filters": [],
+    "description": "**Colorado** vins with **LWN** engine and claims with **4025070** labor code."
+}
+"""
+
+class IssueSpec(BaseModel):
+    at_risk_population_filter: List[str] = []
+    claim_filters: List[str] = []
+    signal_event_filters: List[str] = []
+    description: str = ""
+
+
+class Example:
+    def __init__(
+            self, 
+            text: str, 
+            issue_spec: IssueSpec = None,
+            response: str = None,
+    ):
+        self.text = text
+        
+        if issue_spec is None:
+            assert response is not None
+            self.response = response
+            self.issue_spec = IssueSpec(**json.loads(response))
+        else:
+            self.issue_spec = issue_spec
+            self.response = response or json.dumps(issue_spec.dict(), indent=4)
+
+    def get_response(self):
+        return self.response
+
+    def get(self):
+        return [
+            {"role": "user", "content": self.text},
+            {"role": "assistant", "content": self.response},
+        ]
+    
+
